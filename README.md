@@ -2,57 +2,84 @@
 
 Paste a direct **RTSP** URL and play **H.264 / H.265** in the browser.
 
-Everything comes from the **`hevc-player` npm package** — no local `file:` path and no hevc-studio checkout.
-
 ```text
-rtsp://…  →  hevc-player gateway (from node_modules)  →  Next /v1 rewrite  →  WASM player
+Browser  →  Next.js (/v1 rewrite)  →  hevc-player gateway  →  FFmpeg remux  →  camera RTSP
+                ↓
+         WASM player (H.264 / H.265)
 ```
 
-| Piece | Comes from |
-|---|---|
-| Browser WASM player | `import { … } from "hevc-player"` |
-| Remux gateway | `pnpm exec hevc-player gateway` (bin in the package) |
-| WASM / vendor assets | `pnpm run setup` → package `copy-assets` |
+## Requirements (every machine)
 
-## Requirements
+1. Node.js 20.12+  
+2. **FFmpeg on PATH** (`ffmpeg -version`)  
+3. `pnpm install` + `pnpm run setup`  
+4. **Both** Next.js **and** the gateway must be running  
 
-- Node.js 20.12+ (22+ recommended)
-- **FFmpeg** on `PATH` (the gateway shells out to it)
-- A reachable RTSP camera or MediaMTX path
-
-## Setup
+## Run (recommended)
 
 ```bash
-cd /home/katomaran/Public/Projects/rtsp_stream
+cp .env.example .env   # edit if needed
 pnpm install
 pnpm run setup
+pnpm run dev           # gateway :3002 + Next :3000 together
 ```
 
-## Run
+Production:
 
 ```bash
-pnpm run dev
+pnpm run build
+pnpm run start         # gateway + next start together
 ```
 
-Opens **http://127.0.0.1:3000**. Paste e.g. `rtsp://127.0.0.1:8554/camera1` → **Play**.
+Open `http://127.0.0.1:3000` (or this machine’s LAN IP).
 
-Or two terminals:
+## Why it failed on another system
+
+The rewrite in `next.config.ts` is **not** “the camera URL.” It is only how the Next.js **server** reaches the remux gateway:
+
+```ts
+destination: `${HEVC_GATEWAY_URL}/v1/:path*`
+// default → http://127.0.0.1:3002/v1/:path*
+```
+
+That means:
+
+| Situation | Result |
+|---|---|
+| You only ran `next start` / `next dev` | `/v1` → 500 — **gateway not running** |
+| Gateway not installed / no FFmpeg | Remux fails |
+| Camera RTSP not reachable from that PC | Probe / stream fails |
+| You open `http://192.168.x.x:3000` but CORS origins only list localhost | May fail — set `GATEWAY_ORIGINS` |
+
+`127.0.0.1` here is correct when **Next and the gateway run on the same machine**. The browser never talks to `:3002` directly; it calls same-origin `/v1`, and Next proxies to the local gateway.
+
+## Env (`.env`)
+
+See `.env.example`:
 
 ```bash
-pnpm run gateway   # hevc-player CLI from node_modules → :3002
-pnpm run dev:web   # Next.js → :3000
+HEVC_GATEWAY_URL=http://127.0.0.1:3002   # Next server → gateway
+HEVC_GATEWAY_PORT=3002
+PORT=3000
+HOSTNAME=0.0.0.0                          # allow LAN access
+# Every origin users type in the browser address bar:
+GATEWAY_ORIGINS=http://127.0.0.1:3000,http://localhost:3000,http://192.168.1.10:3000
+ALLOW_LOOPBACK_ORIGINS=true
 ```
 
-## Why the gateway still runs as a local process
-
-A browser **cannot** open `rtsp://` itself. The npm package ships a small **Node** server (`hevc-player gateway`) that remuxes RTSP → MPEG-TS. You install it with the package; you just start the CLI from `node_modules`. That is still “depending on the npm package,” not on hevc-studio.
-
-## Upgrade later
-
-When `hevc-player@0.3.1+` is published (includes `createRemuxSession`):
+If the gateway runs on **another host**:
 
 ```bash
-pnpm add hevc-player@latest
+HEVC_GATEWAY_URL=http://gateway-host:3002
 ```
 
-You can then replace `src/lib/openRemuxSession.ts` with the package helper if you want.
+## Checklist on a new machine
+
+```bash
+ffmpeg -version
+pnpm install && pnpm run setup
+curl -s http://127.0.0.1:3002/health   # after pnpm run start / dev
+# expect: {"ok":true,"service":"streaming",...}
+```
+
+If health fails, RTSP playback cannot work — start the gateway (`pnpm run gateway` or `pnpm run start`).

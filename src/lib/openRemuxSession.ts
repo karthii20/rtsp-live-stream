@@ -40,8 +40,9 @@ export async function openRemuxSession(
   if (!response.ok || !result.streamUrl) {
     if (!result.error && (response.status === 500 || response.status === 502)) {
       throw new Error(
-        "Remux gateway is not reachable. Start it with: pnpm run gateway " +
-          "(or `pnpm run dev`, which starts both Next.js and the gateway).",
+        "Remux gateway is not reachable from Next.js. " +
+          "On this machine run `pnpm run start` or `pnpm run dev` (starts gateway + app), " +
+          "ensure FFmpeg is on PATH, and check HEVC_GATEWAY_URL in .env.",
       );
     }
     throw new Error(result.error || `Remux failed (${response.status})`);

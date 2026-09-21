@@ -1,10 +1,18 @@
 import type { NextConfig } from "next";
 
+/**
+ * Where the Next.js *server* forwards /v1/* (hevc-player remux gateway).
+ * Override with HEVC_GATEWAY_URL when the gateway runs on another host/port.
+ * Browsers still call same-origin /v1 — they never see this URL.
+ */
+const gatewayUrl = (
+  process.env.HEVC_GATEWAY_URL ||
+  `http://127.0.0.1:${process.env.HEVC_GATEWAY_PORT || "3002"}`
+).replace(/\/$/, "");
+
 const nextConfig: NextConfig = {
-  // ESM package with .js imports inside dist/
   transpilePackages: ["hevc-player"],
 
-  // SharedArrayBuffer / WASM workers used by the HEVC decoder
   async headers() {
     return [
       {
@@ -17,12 +25,11 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Same-origin /v1 → package gateway (avoids CORS when pasting RTSP)
   async rewrites() {
     return [
       {
         source: "/v1/:path*",
-        destination: "http://127.0.0.1:3002/v1/:path*",
+        destination: `${gatewayUrl}/v1/:path*`,
       },
     ];
   },
