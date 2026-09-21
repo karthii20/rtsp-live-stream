@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "setup": "node ./scripts/copy-hevc-assets.mjs public",
+    "gateway": "hevc-player gateway --port 3002 --origins http://127.0.0.1:3000,http://localhost:3000",
+    "dev:web": "pnpm run setup && next dev --hostname 127.0.0.1 --port 3000",
+    "dev": "pnpm run setup && node ./scripts/dev.mjs",
+    "build": "pnpm run setup && next build",
+    "start": "next start --hostname 127.0.0.1 --port 3000",
     "lint": "eslint"
   },
   "dependencies": {
+    "hevc-player": "0.3.0",
     "next": "16.3.5",
     "react": "19.2.8",
     "react-dom": "19.2.8"

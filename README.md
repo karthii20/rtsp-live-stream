@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RTSP Stream (Next.js + hevc-player from npm)
 
-## Getting Started
+Paste a direct **RTSP** URL and play **H.264 / H.265** in the browser.
 
-First, run the development server:
+Everything comes from the **`hevc-player` npm package** — no local `file:` path and no hevc-studio checkout.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```text
+rtsp://…  →  hevc-player gateway (from node_modules)  →  Next /v1 rewrite  →  WASM player
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Piece | Comes from |
+|---|---|
+| Browser WASM player | `import { … } from "hevc-player"` |
+| Remux gateway | `pnpm exec hevc-player gateway` (bin in the package) |
+| WASM / vendor assets | `pnpm run setup` → package `copy-assets` |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Requirements
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Node.js 20.12+ (22+ recommended)
+- **FFmpeg** on `PATH` (the gateway shells out to it)
+- A reachable RTSP camera or MediaMTX path
 
-## Learn More
+## Setup
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cd /home/katomaran/Public/Projects/rtsp_stream
+pnpm install
+pnpm run setup
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Run
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm run dev
+```
 
-## Deploy on Vercel
+Opens **http://127.0.0.1:3000**. Paste e.g. `rtsp://127.0.0.1:8554/camera1` → **Play**.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Or two terminals:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm run gateway   # hevc-player CLI from node_modules → :3002
+pnpm run dev:web   # Next.js → :3000
+```
+
+## Why the gateway still runs as a local process
+
+A browser **cannot** open `rtsp://` itself. The npm package ships a small **Node** server (`hevc-player gateway`) that remuxes RTSP → MPEG-TS. You install it with the package; you just start the CLI from `node_modules`. That is still “depending on the npm package,” not on hevc-studio.
+
+## Upgrade later
+
+When `hevc-player@0.3.1+` is published (includes `createRemuxSession`):
+
+```bash
+pnpm add hevc-player@latest
+```
+
+You can then replace `src/lib/openRemuxSession.ts` with the package helper if you want.
