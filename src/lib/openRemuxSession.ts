@@ -38,6 +38,14 @@ export async function openRemuxSession(
   };
 
   if (!response.ok || !result.streamUrl) {
+    if (response.status === 403) {
+      throw new Error(
+        "Gateway rejected this browser origin (Forbidden). " +
+          "Set PUBLIC_ORIGIN to the exact URL in the address bar " +
+          `(e.g. PUBLIC_ORIGIN=${typeof window !== "undefined" ? window.location.origin : "http://YOUR_SERVER_IP:3000"}) ` +
+          "or add it to GATEWAY_ORIGINS, then restart the container.",
+      );
+    }
     if (!result.error && (response.status === 500 || response.status === 502)) {
       throw new Error(
         "Remux gateway is not reachable from Next.js. " +

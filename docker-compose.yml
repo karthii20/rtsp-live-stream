@@ -9,7 +9,10 @@ services:
       HOSTNAME: "0.0.0.0"
       HEVC_GATEWAY_PORT: "3002"
       HEVC_GATEWAY_URL: "http://127.0.0.1:3002"
-      # Add every URL you open in the browser (LAN IP, hostname, etc.)
+      # Exact URL users open in the browser (no trailing slash). Required on a server IP/hostname.
+      # Example: http://169.58.70.166:3000
+      PUBLIC_ORIGIN: "${PUBLIC_ORIGIN:-http://127.0.0.1:3000}"
+      # Optional extra origins (comma-separated). PUBLIC_ORIGIN is always included.
       GATEWAY_ORIGINS: "${GATEWAY_ORIGINS:-http://127.0.0.1:3000,http://localhost:3000}"
       ALLOW_LOOPBACK_ORIGINS: "${ALLOW_LOOPBACK_ORIGINS:-true}"
     restart: unless-stopped

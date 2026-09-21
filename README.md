@@ -94,20 +94,37 @@ On every push to `main`, GitHub Actions builds and publishes:
 
 ### Run the published image
 
+**Important:** the gateway only accepts listed browser origins. If you open
+`http://YOUR_SERVER_IP:3000` but `PUBLIC_ORIGIN` is still localhost, you get **Forbidden** on `/v1/sessions`.
+
 ```bash
 docker pull ghcr.io/karthii20/rtsp-live-stream:latest
 
 docker run --rm -p 3000:3000 \
-  -e GATEWAY_ORIGINS=http://127.0.0.1:3000,http://localhost:3000 \
+  -e PUBLIC_ORIGIN=http://YOUR_SERVER_IP:3000 \
   ghcr.io/karthii20/rtsp-live-stream:latest
 ```
 
-Or with Compose (builds locally if the image is missing):
+Or with Compose:
 
 ```bash
-docker compose up --build
+# .env next to docker-compose.yml:
+# PUBLIC_ORIGIN=http://169.58.70.166:3000
+
+docker compose up -d
 ```
 
-Open `http://127.0.0.1:3000`. If you browse via a LAN IP, add that origin to `GATEWAY_ORIGINS`.
+Open the same URL you set in `PUBLIC_ORIGIN`.
 
 > First pull from GHCR may require `docker login ghcr.io` (GitHub username + a PAT with `read:packages`), or make the package public under **Packages** on the repo.
+
+### “Forbidden” / CORS on a server
+
+That is the gateway origin check, not a Next.js bug. Fix:
+
+```bash
+export PUBLIC_ORIGIN=http://169.58.70.166:3000   # must match the address bar exactly
+docker compose up -d --force-recreate
+```
+
+The COOP console warning on plain HTTP + public IP is expected (browsers only fully trust HTTPS or localhost). For production, put HTTPS in front (Caddy/nginx + Let’s Encrypt).

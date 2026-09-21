@@ -21,17 +21,7 @@ const hevcRoot = dirname(require.resolve("hevc-player/package.json"));
 const cli = join(hevcRoot, "scripts/cli.mjs");
 const nextBin = join(root, "node_modules/next/dist/bin/next");
 
-const mode = process.argv[2] === "start" ? "start" : "dev";
-const gatewayPort = process.env.HEVC_GATEWAY_PORT || "3002";
-const appPort = process.env.PORT || "3000";
-const hostname = process.env.HOSTNAME || "0.0.0.0";
-const origins =
-  process.env.GATEWAY_ORIGINS ||
-  [
-    `http://127.0.0.1:${appPort}`,
-    `http://localhost:${appPort}`,
-  ].join(",");
-
+// Load .env before reading GATEWAY_ORIGINS / PUBLIC_ORIGIN.
 if (existsSync(join(root, ".env")) && typeof process.loadEnvFile === "function") {
   try {
     process.loadEnvFile(join(root, ".env"));
@@ -39,6 +29,30 @@ if (existsSync(join(root, ".env")) && typeof process.loadEnvFile === "function")
     /* optional */
   }
 }
+
+const mode = process.argv[2] === "start" ? "start" : "dev";
+const gatewayPort = process.env.HEVC_GATEWAY_PORT || "3002";
+const appPort = process.env.PORT || "3000";
+const hostname = process.env.HOSTNAME || "0.0.0.0";
+
+/** Deduped comma list of browser origins the gateway must accept. */
+function buildOrigins() {
+  const defaults = [
+    `http://127.0.0.1:${appPort}`,
+    `http://localhost:${appPort}`,
+  ];
+  const fromEnv = (process.env.GATEWAY_ORIGINS || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  // PUBLIC_ORIGIN = the exact URL users type in the browser (e.g. http://169.58.70.166:3000)
+  const publicOrigin = (process.env.PUBLIC_ORIGIN || "").trim().replace(/\/$/, "");
+  const merged = [...defaults, ...fromEnv];
+  if (publicOrigin) merged.push(publicOrigin);
+  return [...new Set(merged)].join(",");
+}
+
+const origins = buildOrigins();
 
 const children = [];
 
@@ -73,6 +87,7 @@ process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
 console.log(`[rtsp_stream] hevc-player gateway on :${gatewayPort} …`);
+console.log(`[rtsp_stream] allowed browser origins: ${origins}`);
 run(
   "gateway",
   cli,
