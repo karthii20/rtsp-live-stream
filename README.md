@@ -1,6 +1,11 @@
-# RTSP Stream (Next.js + hevc-player from npm)
+# hevc-player demo
 
-Paste a direct **RTSP** URL and play **H.264 / H.265** in the browser.
+Live demo of the [`hevc-player`](https://www.npmjs.com/package/hevc-player) npm package:
+paste a direct **RTSP** URL and play **H.264 / H.265** in the browser.
+
+**Package:** [npmjs.com/package/hevc-player](https://www.npmjs.com/package/hevc-player)
+
+**Full working flow (with diagrams):** [docs/RTSP-PLAYBACK-FLOW.md](./docs/RTSP-PLAYBACK-FLOW.md)
 
 ```text
 Browser  →  Next.js (/v1 rewrite)  →  hevc-player gateway  →  FFmpeg remux  →  camera RTSP
@@ -8,6 +13,7 @@ Browser  →  Next.js (/v1 rewrite)  →  hevc-player gateway  →  FFmpeg remux
          WASM player (H.264 / H.265)
 ```
 
+Browsers cannot open RTSP natively. The package’s gateway remuxes RTSP → MPEG-TS; the WASM player decodes in-page.
 ## Requirements (every machine)
 
 1. Node.js 20.12+  

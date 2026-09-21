@@ -14,12 +14,14 @@ type Status = "idle" | "loading" | "connecting" | "playing" | "error";
 const EXAMPLES = [
   "rtsp://127.0.0.1:8554/camera1",
   "rtsp://admin:password@192.168.1.50:554/Streaming/Channels/101",
-  "http://127.0.0.1:8889/camera1",
 ];
 
+const NPM_URL = "https://www.npmjs.com/package/hevc-player";
+
 /**
- * Paste an RTSP (or MediaMTX viewer) URL → remux via hevc-player gateway → WASM play.
- * The browser never opens RTSP directly; that is what the gateway is for.
+ * Live demo of the hevc-player npm package.
+ * Paste RTSP → package gateway remuxes to MPEG-TS → WASM plays H.264/H.265.
+ * Browsers cannot open RTSP natively; the gateway in the package is what makes this work.
  */
 export function RtspPastePlayer() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -33,12 +35,14 @@ export function RtspPastePlayer() {
 
   const onPlaying = useEffectEvent(() => {
     setStatus("playing");
-    setMessage("Playing (WASM H.264 / H.265)");
+    setMessage("Playing via hevc-player WASM (H.264 / H.265)");
   });
 
   const onPlayerError = useEffectEvent(() => {
     setStatus("error");
-    setMessage("Playback failed. Check the RTSP URL and that the gateway can reach the camera.");
+    setMessage(
+      "Playback failed. Check the RTSP URL and that the hevc-player gateway can reach the camera.",
+    );
   });
 
   useEffect(() => {
@@ -101,7 +105,7 @@ export function RtspPastePlayer() {
     setMessage("Stopping previous stream…");
     await stop();
     setStatus("connecting");
-    setMessage("Opening remux session…");
+    setMessage("Opening remux session (hevc-player gateway)…");
 
     try {
       // MediaMTX viewer pages → derived RTSP; plain rtsp:// stays as-is.
@@ -138,30 +142,86 @@ export function RtspPastePlayer() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "Could not start stream. Is `pnpm run gateway` running?",
+          : "Could not start stream. Is the hevc-player gateway running?",
       );
     }
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10">
-      <header className="space-y-2">
-        <p className="text-sm font-medium tracking-wide text-teal-700 dark:text-teal-300">
-          hevc-player
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          RTSP in the browser
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pb-6 pt-10 sm:pt-14">
+      <header className="space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-4xl font-semibold tracking-tight text-[var(--foreground)] sm:text-5xl">
+              hevc-player
+            </span>
+            <span className="rounded border border-[var(--line)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted)]">
+              v0.3.0
+            </span>
+          </div>
+
+          <a
+            href={NPM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View hevc-player on npm"
+            className="inline-flex shrink-0 items-center gap-2 rounded-sm bg-[#CB3837] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a82e2e]"
+          >
+            {/* Official-style npm mark (white on red) */}
+            <svg
+              width="28"
+              height="12"
+              viewBox="0 0 18 7"
+              aria-hidden
+              className="shrink-0"
+            >
+              <path
+                fill="#fff"
+                d="M0 0h18v6H9v1H5V6H0V0zm1 5h3V1H1v4zm4 0h3V2H7v3H5V1zm4 0h5V1H9v4zm1-1h3V2h-3v2z"
+              />
+            </svg>
+            <span>npm</span>
+          </a>
+        </div>
+
+        <h1 className="max-w-2xl text-xl font-medium leading-snug text-[var(--foreground)]/90 sm:text-2xl">
+          Paste an RTSP URL. Play H.264 / H.265 in any modern browser.
         </h1>
-        <p className="max-w-2xl text-base text-zinc-600 dark:text-zinc-400">
-          Paste a direct <code className="text-teal-700 dark:text-teal-300">rtsp://</code> URL.
-          The bundled gateway remuxes it to MPEG-TS; WASM decodes H.264 / H.265 in any modern
-          browser. No hevc-studio checkout required.
+
+        <p className="max-w-2xl text-base leading-relaxed text-[var(--muted)]">
+          Browsers cannot speak RTSP. This live demo uses the{" "}
+          <a
+            href={NPM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--accent)] underline-offset-2 hover:underline"
+          >
+            hevc-player
+          </a>{" "}
+          npm package end-to-end: its FFmpeg gateway remuxes your camera to
+          MPEG-TS, then WASM decodes video in the page.
         </p>
+
+        <ol className="flex flex-wrap gap-x-4 gap-y-2 font-mono text-xs text-[var(--muted)]">
+          <li className="flex items-center gap-2">
+            <span className="text-[var(--accent)]">1</span> paste <code>rtsp://</code>
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="text-[var(--accent)]">2</span> gateway remux
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="text-[var(--accent)]">3</span> WASM play
+          </li>
+        </ol>
       </header>
 
-      <section className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white/80 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60">
-        <label htmlFor="rtsp-url" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Stream URL
+      {/* Interactive demo surface */}
+      <section className="flex flex-col gap-3 border border-[var(--line)] bg-[var(--panel)] p-4 backdrop-blur-sm sm:p-5">
+        <label
+          htmlFor="rtsp-url"
+          className="text-sm font-medium text-[var(--foreground)]/90"
+        >
+          Camera RTSP URL
         </label>
         <input
           id="rtsp-url"
@@ -169,7 +229,7 @@ export function RtspPastePlayer() {
           onChange={(e) => setUrlInput(e.target.value)}
           placeholder="rtsp://user:pass@host:554/path"
           spellCheck={false}
-          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 font-mono text-sm text-zinc-900 outline-none ring-teal-500/40 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          className="w-full border border-[var(--line)] bg-black/40 px-3 py-2.5 font-mono text-sm text-[var(--foreground)] outline-none ring-[var(--accent)]/35 placeholder:text-[var(--muted)]/60 focus:ring-2"
         />
         <div className="flex flex-wrap gap-2">
           {EXAMPLES.map((example) => (
@@ -177,9 +237,9 @@ export function RtspPastePlayer() {
               key={example}
               type="button"
               onClick={() => setUrlInput(example)}
-              className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
+              className="border border-[var(--line)] px-3 py-1 font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--accent)]/40 hover:text-[var(--accent)]"
             >
-              {example.length > 42 ? `${example.slice(0, 40)}…` : example}
+              {example.length > 48 ? `${example.slice(0, 46)}…` : example}
             </button>
           ))}
         </div>
@@ -188,14 +248,14 @@ export function RtspPastePlayer() {
             type="button"
             onClick={() => void play()}
             disabled={!ready || status === "connecting" || status === "loading"}
-            className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--accent-ink)] transition hover:bg-[var(--accent-dim)] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
           >
-            Play
+            Play stream
           </button>
           <button
             type="button"
             onClick={() => void stop()}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="border border-[var(--line)] px-4 py-2.5 text-sm font-medium text-[var(--foreground)]/80 transition hover:border-[var(--accent)]/40 hover:text-[var(--accent)]"
           >
             Stop
           </button>
@@ -203,10 +263,10 @@ export function RtspPastePlayer() {
         <p
           className={
             status === "error"
-              ? "text-sm text-red-600 dark:text-red-400"
+              ? "text-sm text-[var(--danger)]"
               : status === "playing"
-                ? "text-sm text-teal-700 dark:text-teal-300"
-                : "text-sm text-zinc-500"
+                ? "text-sm text-[var(--accent)]"
+                : "text-sm text-[var(--muted)]"
           }
           role="status"
         >
@@ -216,21 +276,15 @@ export function RtspPastePlayer() {
 
       <section
         ref={stageRef}
-        className="aspect-video w-full overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-lg"
-        aria-label="Video stage"
+        className="aspect-video w-full overflow-hidden border border-[var(--line)] bg-black shadow-[0_0_80px_-20px_rgba(232,165,75,0.35)]"
+        aria-label="hevc-player video stage"
       />
 
       {stats ? (
-        <pre className="overflow-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+        <pre className="overflow-auto border border-[var(--line)] bg-black/50 p-3 text-xs text-[var(--muted)]">
           {stats}
         </pre>
       ) : null}
-
-      <p className="text-xs text-zinc-500">
-        Needs FFmpeg on PATH and <code>pnpm run gateway</code> (or <code>pnpm run dev</code> which
-        starts both). Gateway listens on <code>:3002</code>; this app proxies <code>/v1</code> to
-        it.
-      </p>
     </div>
   );
 }

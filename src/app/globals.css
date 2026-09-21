@@ -1,31 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f7f8;
-  --foreground: #18181b;
+  /* Warm amber on ink — replaces the previous emerald theme */
+  --background: #0e0f14;
+  --foreground: #f2efe8;
+  --muted: #9a958a;
+  --accent: #e8a54b;
+  --accent-dim: #c4842e;
+  --accent-ink: #1a1408;
+  --panel: rgba(22, 20, 18, 0.78);
+  --line: rgba(232, 165, 75, 0.2);
+  --danger: #f87171;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #fafafa;
-  }
+  --font-sans: var(--font-outfit);
+  --font-mono: var(--font-jetbrains);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-outfit), system-ui, sans-serif;
 }
 
-code {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.92em;
+code,
+pre {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
 }
