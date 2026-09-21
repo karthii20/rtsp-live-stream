@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.github
+.env
+.env.*
+!.env.example
+*.md
+AGENTS.md
+CLAUDE.md
+.gitignore
+.DS_Store
+coverage
+*.tsbuildinfo
+next-env.d.ts
+.vercel

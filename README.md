@@ -83,3 +83,31 @@ curl -s http://127.0.0.1:3002/health   # after pnpm run start / dev
 ```
 
 If health fails, RTSP playback cannot work — start the gateway (`pnpm run gateway` or `pnpm run start`).
+
+## Docker
+
+On every push to `main`, GitHub Actions builds and publishes:
+
+`ghcr.io/karthii20/rtsp-live-stream:latest`
+
+(also tagged `sha-<commit>`).
+
+### Run the published image
+
+```bash
+docker pull ghcr.io/karthii20/rtsp-live-stream:latest
+
+docker run --rm -p 3000:3000 \
+  -e GATEWAY_ORIGINS=http://127.0.0.1:3000,http://localhost:3000 \
+  ghcr.io/karthii20/rtsp-live-stream:latest
+```
+
+Or with Compose (builds locally if the image is missing):
+
+```bash
+docker compose up --build
+```
+
+Open `http://127.0.0.1:3000`. If you browse via a LAN IP, add that origin to `GATEWAY_ORIGINS`.
+
+> First pull from GHCR may require `docker login ghcr.io` (GitHub username + a PAT with `read:packages`), or make the package public under **Packages** on the repo.

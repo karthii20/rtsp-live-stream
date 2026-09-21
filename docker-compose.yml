@@ -1,0 +1,15 @@
+services:
+  rtsp-stream:
+    image: ghcr.io/karthii20/rtsp-live-stream:latest
+    build: .
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      HEVC_GATEWAY_PORT: "3002"
+      HEVC_GATEWAY_URL: "http://127.0.0.1:3002"
+      # Add every URL you open in the browser (LAN IP, hostname, etc.)
+      GATEWAY_ORIGINS: "${GATEWAY_ORIGINS:-http://127.0.0.1:3000,http://localhost:3000}"
+      ALLOW_LOOPBACK_ORIGINS: "${ALLOW_LOOPBACK_ORIGINS:-true}"
+    restart: unless-stopped
