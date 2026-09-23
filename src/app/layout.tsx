@@ -13,9 +13,9 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "hevc-player demo · RTSP in the browser",
+  title: "hevc-player demo · RTSP video + audio in the browser",
   description:
-    "Live demo of the hevc-player npm package — paste an RTSP URL and play H.264/H.265 in any modern browser.",
+    "Live demo of hevc-player 0.4.0 — paste an RTSP URL and play H.264/H.265 video with AAC audio in any modern browser.",
 };
 
 export default function RootLayout({

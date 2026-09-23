@@ -2,4 +2,4 @@ allowBuilds:
   sharp: false
   unrs-resolver: false
 minimumReleaseAgeExclude:
-  - hevc-player@0.3.0
+  - hevc-player@0.3.0 || 0.4.0

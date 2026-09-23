@@ -3,25 +3,25 @@
 import { useEffect, useRef, useState, useEffectEvent } from "react";
 import {
   classifyPasteUrl,
+  createRemuxSession,
   createStreamPlayer,
   preloadHevcPlayer,
   type HevcPlayer,
 } from "hevc-player";
-import { openRemuxSession } from "@/lib/openRemuxSession";
 
 type Status = "idle" | "loading" | "connecting" | "playing" | "error";
 
 const EXAMPLES = [
-  "rtsp://127.0.0.1:8554/camera1",
   "rtsp://admin:password@192.168.1.50:554/Streaming/Channels/101",
+  "rtsp://user:pass@camera.example.com:554/stream1",
 ];
 
 const NPM_URL = "https://www.npmjs.com/package/hevc-player";
 
 /**
- * Live demo of the hevc-player npm package.
- * Paste RTSP → package gateway remuxes to MPEG-TS → WASM plays H.264/H.265.
- * Browsers cannot open RTSP natively; the gateway in the package is what makes this work.
+ * Live demo of hevc-player 0.4.0.
+ * Paste RTSP → package gateway remuxes video+audio to MPEG-TS → WASM plays H.264/H.265 + AAC.
+ * Starts muted (browser autoplay); use Enable sound from a click to unmute.
  */
 export function RtspPastePlayer() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -32,10 +32,11 @@ export function RtspPastePlayer() {
   const [message, setMessage] = useState("Paste an RTSP URL and click Play.");
   const [stats, setStats] = useState("");
   const [ready, setReady] = useState(false);
+  const [muted, setMuted] = useState(true);
 
   const onPlaying = useEffectEvent(() => {
     setStatus("playing");
-    setMessage("Playing via hevc-player WASM (H.264 / H.265)");
+    setMessage("Playing video + audio via hevc-player WASM (H.264 / H.265 + AAC)");
   });
 
   const onPlayerError = useEffectEvent(() => {
@@ -84,8 +85,31 @@ export function RtspPastePlayer() {
     if (player) await player.destroy().catch(() => undefined);
     stageRef.current?.replaceChildren();
     setStats("");
+    setMuted(true);
     setStatus("idle");
     setMessage("Stopped.");
+  }
+
+  /** Must run from a click — browsers block unmuted autoplay. */
+  async function toggleSound() {
+    const player = playerRef.current;
+    if (!player) return;
+    try {
+      const next = !player.isMuted();
+      await player.setMuted(next);
+      setMuted(player.isMuted());
+      setMessage(
+        player.isMuted()
+          ? "Muted — click Enable sound to hear camera audio."
+          : "Sound on (AAC when the camera has audio).",
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not unmute. Click Enable sound again.",
+      );
+    }
   }
 
   async function play() {
@@ -108,23 +132,25 @@ export function RtspPastePlayer() {
     setMessage("Opening remux session (hevc-player gateway)…");
 
     try {
-      // MediaMTX viewer pages → derived RTSP; plain rtsp:// stays as-is.
+      // Optional: rewrite some HTTP viewer URLs to rtsp://. Plain camera RTSP stays as-is.
       const kind = classifyPasteUrl(raw);
       const sourceUrl = kind.mode === "remux" ? kind.sourceUrl : raw;
 
       // Empty gatewayUrl → same-origin /v1 rewrite to the npm package gateway.
-      const streamUrl = await openRemuxSession(sourceUrl, {
+      const streamUrl = await createRemuxSession(sourceUrl, {
         gatewayUrl: "",
         skipProbe: false,
       });
 
-      setMessage(`Remuxing ${sourceUrl} …`);
+      setMessage(`Remuxing ${sourceUrl} (video + audio) …`);
 
       const player = await createStreamPlayer(stageRef.current, {
         url: streamUrl,
         live: true,
         mode: "software",
-        audio: false,
+        // 0.4.0: decode AAC when present; start muted for autoplay, unmute via button.
+        audio: true,
+        muted: true,
         onPlaying,
         onError: onPlayerError,
         onEnded: () => {
@@ -137,13 +163,23 @@ export function RtspPastePlayer() {
         },
       });
       playerRef.current = player;
+      setMuted(player.isMuted());
     } catch (error) {
       setStatus("error");
-      setMessage(
+      const rawMessage =
         error instanceof Error
           ? error.message
-          : "Could not start stream. Is the hevc-player gateway running?",
-      );
+          : "Could not start stream. Is the hevc-player gateway running?";
+      // Gateway origin whitelist → Forbidden when PUBLIC_ORIGIN does not match the address bar.
+      if (/forbidden/i.test(rawMessage)) {
+        setMessage(
+          "Gateway rejected this browser origin (Forbidden). " +
+            `Set PUBLIC_ORIGIN=${typeof window !== "undefined" ? window.location.origin : "http://YOUR_HOST:3000"} ` +
+            "or add it to GATEWAY_ORIGINS, then restart.",
+        );
+        return;
+      }
+      setMessage(rawMessage);
     }
   }
 
@@ -156,7 +192,7 @@ export function RtspPastePlayer() {
               hevc-player
             </span>
             <span className="rounded border border-[var(--line)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted)]">
-              v0.3.0
+              v0.4.0
             </span>
           </div>
 
@@ -167,7 +203,6 @@ export function RtspPastePlayer() {
             aria-label="View hevc-player on npm"
             className="inline-flex shrink-0 items-center gap-2 rounded-sm bg-[#CB3837] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a82e2e]"
           >
-            {/* Official-style npm mark (white on red) */}
             <svg
               width="28"
               height="12"
@@ -185,11 +220,11 @@ export function RtspPastePlayer() {
         </div>
 
         <h1 className="max-w-2xl text-xl font-medium leading-snug text-[var(--foreground)]/90 sm:text-2xl">
-          Paste an RTSP URL. Play H.264 / H.265 in any modern browser.
+          Paste an RTSP URL. Play H.264 / H.265 video with AAC audio.
         </h1>
 
         <p className="max-w-2xl text-base leading-relaxed text-[var(--muted)]">
-          Browsers cannot speak RTSP. This live demo uses the{" "}
+          Browsers cannot speak RTSP. This live demo uses{" "}
           <a
             href={NPM_URL}
             target="_blank"
@@ -198,8 +233,8 @@ export function RtspPastePlayer() {
           >
             hevc-player
           </a>{" "}
-          npm package end-to-end: its FFmpeg gateway remuxes your camera to
-          MPEG-TS, then WASM decodes video in the page.
+          0.4.0 end-to-end: the FFmpeg gateway remuxes camera video (copy) and
+          audio (to AAC), then WASM decodes both in the page.
         </p>
 
         <ol className="flex flex-wrap gap-x-4 gap-y-2 font-mono text-xs text-[var(--muted)]">
@@ -210,12 +245,11 @@ export function RtspPastePlayer() {
             <span className="text-[var(--accent)]">2</span> gateway remux
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-[var(--accent)]">3</span> WASM play
+            <span className="text-[var(--accent)]">3</span> WASM video + audio
           </li>
         </ol>
       </header>
 
-      {/* Interactive demo surface */}
       <section className="flex flex-col gap-3 border border-[var(--line)] bg-[var(--panel)] p-4 backdrop-blur-sm sm:p-5">
         <label
           htmlFor="rtsp-url"
@@ -251,6 +285,14 @@ export function RtspPastePlayer() {
             className="bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--accent-ink)] transition hover:bg-[var(--accent-dim)] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
           >
             Play stream
+          </button>
+          <button
+            type="button"
+            onClick={() => void toggleSound()}
+            disabled={status !== "playing"}
+            className="border border-[var(--line)] px-4 py-2.5 text-sm font-medium text-[var(--foreground)]/80 transition hover:border-[var(--accent)]/40 hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {muted ? "Enable sound" : "Mute"}
           </button>
           <button
             type="button"

@@ -1,7 +1,7 @@
 # hevc-player demo
 
-Live demo of the [`hevc-player`](https://www.npmjs.com/package/hevc-player) npm package:
-paste a direct **RTSP** URL and play **H.264 / H.265** in the browser.
+Live demo of the [`hevc-player`](https://www.npmjs.com/package/hevc-player) npm package (**0.4.0**):
+paste a direct **RTSP** URL and play **H.264 / H.265 video with AAC audio** in the browser.
 
 **Package:** [npmjs.com/package/hevc-player](https://www.npmjs.com/package/hevc-player)
 
@@ -10,10 +10,11 @@ paste a direct **RTSP** URL and play **H.264 / H.265** in the browser.
 ```text
 Browser  →  Next.js (/v1 rewrite)  →  hevc-player gateway  →  FFmpeg remux  →  camera RTSP
                 ↓
-         WASM player (H.264 / H.265)
+         WASM player (H.264 / H.265 + AAC)
 ```
 
-Browsers cannot open RTSP natively. The package’s gateway remuxes RTSP → MPEG-TS; the WASM player decodes in-page.
+Browsers cannot open RTSP natively. The package’s gateway remuxes RTSP → MPEG-TS (video copy + audio to AAC); the WASM player decodes both in-page. Playback starts muted — click **Enable sound** after Play.
+**MediaMTX is not required.** Paste the camera/NVR `rtsp://` URL directly. Shared remux in the gateway means many viewers of the same URL share one FFmpeg (one pull per camera, not per browser tab).
 ## Requirements (every machine)
 
 1. Node.js 20.12+  
