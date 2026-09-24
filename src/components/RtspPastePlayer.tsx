@@ -7,6 +7,7 @@ import {
   createStreamPlayer,
   preloadHevcPlayer,
   type HevcPlayer,
+  type HevcPlayerStats,
 } from "hevc-player";
 
 type Status = "idle" | "loading" | "connecting" | "playing" | "error";
@@ -20,19 +21,20 @@ const NPM_URL = "https://www.npmjs.com/package/hevc-player";
 
 /**
  * Live demo of hevc-player 0.4.0.
- * Paste RTSP → package gateway remuxes video+audio to MPEG-TS → WASM plays H.264/H.265 + AAC.
- * Starts muted (browser autoplay); use Enable sound from a click to unmute.
+ * Video + stream controls sit side-by-side; fullscreen expands the stage.
  */
 export function RtspPastePlayer() {
   const stageRef = useRef<HTMLDivElement>(null);
+  const stageShellRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HevcPlayer | null>(null);
 
   const [urlInput, setUrlInput] = useState(EXAMPLES[0]);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("Paste an RTSP URL and click Play.");
-  const [stats, setStats] = useState("");
+  const [stats, setStats] = useState<HevcPlayerStats | null>(null);
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const onPlaying = useEffectEvent(() => {
     setStatus("playing");
@@ -74,17 +76,43 @@ export function RtspPastePlayer() {
     if (status !== "playing") return;
     const timer = setInterval(() => {
       const s = playerRef.current?.stats();
-      if (s) setStats(JSON.stringify(s, null, 2));
+      if (s) setStats(s);
     }, 1000);
     return () => clearInterval(timer);
   }, [status]);
+
+  useEffect(() => {
+    function onFsChange() {
+      const active =
+        document.fullscreenElement === stageShellRef.current ||
+        // Safari prefix fallback
+        (document as Document & { webkitFullscreenElement?: Element })
+          .webkitFullscreenElement === stageShellRef.current;
+      setIsFullscreen(Boolean(active));
+      // Keep canvas filling the shell in fullscreen
+      const media = stageRef.current?.querySelector(
+        "canvas, video",
+      ) as HTMLElement | null;
+      if (media) {
+        media.style.width = "100%";
+        media.style.height = "100%";
+        media.style.objectFit = "contain";
+      }
+    }
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+    };
+  }, []);
 
   async function stop() {
     const player = playerRef.current;
     playerRef.current = null;
     if (player) await player.destroy().catch(() => undefined);
     stageRef.current?.replaceChildren();
-    setStats("");
+    setStats(null);
     setMuted(true);
     setStatus("idle");
     setMessage("Stopped.");
@@ -112,6 +140,38 @@ export function RtspPastePlayer() {
     }
   }
 
+  async function toggleFullscreen() {
+    const shell = stageShellRef.current;
+    if (!shell) return;
+    try {
+      if (!document.fullscreenElement) {
+        const req =
+          shell.requestFullscreen?.bind(shell) ||
+          (
+            shell as HTMLDivElement & {
+              webkitRequestFullscreen?: () => Promise<void>;
+            }
+          ).webkitRequestFullscreen?.bind(shell);
+        await req?.();
+      } else {
+        const exit =
+          document.exitFullscreen?.bind(document) ||
+          (
+            document as Document & {
+              webkitExitFullscreen?: () => Promise<void>;
+            }
+          ).webkitExitFullscreen?.bind(document);
+        await exit?.();
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Fullscreen was blocked by the browser.",
+      );
+    }
+  }
+
   async function play() {
     const raw = urlInput.trim();
     if (!raw) {
@@ -132,11 +192,9 @@ export function RtspPastePlayer() {
     setMessage("Opening remux session (hevc-player gateway)…");
 
     try {
-      // Optional: rewrite some HTTP viewer URLs to rtsp://. Plain camera RTSP stays as-is.
       const kind = classifyPasteUrl(raw);
       const sourceUrl = kind.mode === "remux" ? kind.sourceUrl : raw;
 
-      // Empty gatewayUrl → same-origin /v1 rewrite to the npm package gateway.
       const streamUrl = await createRemuxSession(sourceUrl, {
         gatewayUrl: "",
         skipProbe: false,
@@ -148,7 +206,6 @@ export function RtspPastePlayer() {
         url: streamUrl,
         live: true,
         mode: "software",
-        // 0.4.0: decode AAC when present; start muted for autoplay, unmute via button.
         audio: true,
         muted: true,
         onPlaying,
@@ -164,13 +221,22 @@ export function RtspPastePlayer() {
       });
       playerRef.current = player;
       setMuted(player.isMuted());
+
+      const media = stageRef.current.querySelector(
+        "canvas, video",
+      ) as HTMLElement | null;
+      if (media) {
+        media.style.width = "100%";
+        media.style.height = "100%";
+        media.style.objectFit = "contain";
+        media.style.display = "block";
+      }
     } catch (error) {
       setStatus("error");
       const rawMessage =
         error instanceof Error
           ? error.message
           : "Could not start stream. Is the hevc-player gateway running?";
-      // Gateway origin whitelist → Forbidden when PUBLIC_ORIGIN does not match the address bar.
       if (/forbidden/i.test(rawMessage)) {
         setMessage(
           "Gateway rejected this browser origin (Forbidden). " +
@@ -184,149 +250,213 @@ export function RtspPastePlayer() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pb-6 pt-10 sm:pt-14">
-      <header className="space-y-5">
-        <div className="flex items-start justify-between gap-4">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 pb-4 pt-8 sm:pt-10">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-4xl font-semibold tracking-tight text-[var(--foreground)] sm:text-5xl">
+            <span className="text-3xl font-semibold tracking-tight text-[var(--foreground)] sm:text-4xl">
               hevc-player
             </span>
-            <span className="rounded border border-[var(--line)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted)]">
+            <span className="rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted-strong)]">
               v0.4.0
             </span>
           </div>
-
-          <a
-            href={NPM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="View hevc-player on npm"
-            className="inline-flex shrink-0 items-center gap-2 rounded-sm bg-[#CB3837] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a82e2e]"
-          >
-            <svg
-              width="28"
-              height="12"
-              viewBox="0 0 18 7"
-              aria-hidden
-              className="shrink-0"
-            >
-              <path
-                fill="#fff"
-                d="M0 0h18v6H9v1H5V6H0V0zm1 5h3V1H1v4zm4 0h3V2H7v3H5V1zm4 0h5V1H9v4zm1-1h3V2h-3v2z"
-              />
-            </svg>
-            <span>npm</span>
-          </a>
+          <h1 className="max-w-xl text-base font-medium text-[var(--muted-strong)] sm:text-lg">
+            Play RTSP in the browser — H.264 / H.265 + AAC
+          </h1>
         </div>
 
-        <h1 className="max-w-2xl text-xl font-medium leading-snug text-[var(--foreground)]/90 sm:text-2xl">
-          Paste an RTSP URL. Play H.264 / H.265 video with AAC audio.
-        </h1>
-
-        <p className="max-w-2xl text-base leading-relaxed text-[var(--muted)]">
-          Browsers cannot speak RTSP. This live demo uses{" "}
-          <a
-            href={NPM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[var(--accent)] underline-offset-2 hover:underline"
+        <a
+          href={NPM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="View hevc-player on npm"
+          className="inline-flex shrink-0 items-center gap-2 rounded-md bg-[#CB3837] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(203,56,55,0.7)] transition hover:bg-[#a82e2e]"
+        >
+          <svg
+            width="28"
+            height="12"
+            viewBox="0 0 18 7"
+            aria-hidden
+            className="shrink-0"
           >
-            hevc-player
-          </a>{" "}
-          0.4.0 end-to-end: the FFmpeg gateway remuxes camera video (copy) and
-          audio (to AAC), then WASM decodes both in the page.
-        </p>
-
-        <ol className="flex flex-wrap gap-x-4 gap-y-2 font-mono text-xs text-[var(--muted)]">
-          <li className="flex items-center gap-2">
-            <span className="text-[var(--accent)]">1</span> paste <code>rtsp://</code>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="text-[var(--accent)]">2</span> gateway remux
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="text-[var(--accent)]">3</span> WASM video + audio
-          </li>
-        </ol>
+            <path
+              fill="#fff"
+              d="M0 0h18v6H9v1H5V6H0V0zm1 5h3V1H1v4zm4 0h3V2H7v3H5V1zm4 0h5V1H9v4zm1-1h3V2h-3v2z"
+            />
+          </svg>
+          <span>npm</span>
+        </a>
       </header>
 
-      <section className="flex flex-col gap-3 border border-[var(--line)] bg-[var(--panel)] p-4 backdrop-blur-sm sm:p-5">
-        <label
-          htmlFor="rtsp-url"
-          className="text-sm font-medium text-[var(--foreground)]/90"
+      {/* Video + stream info side by side */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] lg:items-stretch">
+        <div
+          ref={stageShellRef}
+          className="relative flex min-h-[240px] flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-black shadow-[0_0_60px_-12px_rgba(255,122,61,0.45)] lg:min-h-[400px]"
         >
-          Camera RTSP URL
-        </label>
-        <input
-          id="rtsp-url"
-          value={urlInput}
-          onChange={(e) => setUrlInput(e.target.value)}
-          placeholder="rtsp://user:pass@host:554/path"
-          spellCheck={false}
-          className="w-full border border-[var(--line)] bg-black/40 px-3 py-2.5 font-mono text-sm text-[var(--foreground)] outline-none ring-[var(--accent)]/35 placeholder:text-[var(--muted)]/60 focus:ring-2"
-        />
-        <div className="flex flex-wrap gap-2">
-          {EXAMPLES.map((example) => (
+          <div
+            ref={stageRef}
+            className="min-h-0 w-full flex-1 bg-black [&_canvas]:h-full [&_canvas]:w-full [&_canvas]:object-contain [&_video]:h-full [&_video]:w-full [&_video]:object-contain"
+            aria-label="hevc-player video stage"
+          />
+
+          <div className="absolute right-2 top-2 z-10 flex gap-2">
             <button
-              key={example}
               type="button"
-              onClick={() => setUrlInput(example)}
-              className="border border-[var(--line)] px-3 py-1 font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--accent)]/40 hover:text-[var(--accent)]"
+              onClick={() => void toggleFullscreen()}
+              className="rounded-md border border-white/25 bg-black/75 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm transition hover:border-[var(--accent)] hover:text-[var(--accent-bright)]"
             >
-              {example.length > 48 ? `${example.slice(0, 46)}…` : example}
+              {isFullscreen ? "Exit full screen" : "Full screen"}
             </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => void play()}
-            disabled={!ready || status === "connecting" || status === "loading"}
-            className="bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--accent-ink)] transition hover:bg-[var(--accent-dim)] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            Play stream
-          </button>
-          <button
-            type="button"
-            onClick={() => void toggleSound()}
-            disabled={status !== "playing"}
-            className="border border-[var(--line)] px-4 py-2.5 text-sm font-medium text-[var(--foreground)]/80 transition hover:border-[var(--accent)]/40 hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {muted ? "Enable sound" : "Mute"}
-          </button>
-          <button
-            type="button"
-            onClick={() => void stop()}
-            className="border border-[var(--line)] px-4 py-2.5 text-sm font-medium text-[var(--foreground)]/80 transition hover:border-[var(--accent)]/40 hover:text-[var(--accent)]"
-          >
-            Stop
-          </button>
-        </div>
-        <p
-          className={
-            status === "error"
-              ? "text-sm text-[var(--danger)]"
-              : status === "playing"
-                ? "text-sm text-[var(--accent)]"
-                : "text-sm text-[var(--muted)]"
-          }
-          role="status"
-        >
-          {message}
-        </p>
-      </section>
+          </div>
 
-      <section
-        ref={stageRef}
-        className="aspect-video w-full overflow-hidden border border-[var(--line)] bg-black shadow-[0_0_80px_-20px_rgba(232,165,75,0.35)]"
-        aria-label="hevc-player video stage"
-      />
+          {!stats && status !== "playing" ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center text-sm font-medium text-[var(--muted-strong)]">
+              Video appears here after Play
+            </div>
+          ) : null}
+        </div>
 
-      {stats ? (
-        <pre className="overflow-auto border border-[var(--line)] bg-black/50 p-3 text-xs text-[var(--muted)]">
-          {stats}
-        </pre>
-      ) : null}
+        <aside className="flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.8)] backdrop-blur-md">
+          <label
+            htmlFor="rtsp-url"
+            className="text-sm font-semibold text-[var(--foreground)]"
+          >
+            Camera RTSP URL
+          </label>
+          <input
+            id="rtsp-url"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            placeholder="rtsp://user:pass@host:554/path"
+            spellCheck={false}
+            className="w-full rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-3 py-2.5 font-mono text-xs text-[var(--foreground)] outline-none ring-[var(--accent)]/40 placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2"
+          />
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLES.map((example) => (
+              <button
+                key={example}
+                type="button"
+                onClick={() => setUrlInput(example)}
+                className="rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-2.5 py-1.5 font-mono text-[10px] text-[var(--muted-strong)] transition hover:border-[var(--accent)] hover:text-[var(--accent-bright)]"
+              >
+                {example.length > 36 ? `${example.slice(0, 34)}…` : example}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void play()}
+              disabled={
+                !ready || status === "connecting" || status === "loading"
+              }
+              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-bold text-[var(--accent-ink)] shadow-[0_8px_20px_-8px_rgba(255,122,61,0.8)] transition hover:bg-[var(--accent-bright)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Play
+            </button>
+            <button
+              type="button"
+              onClick={() => void toggleSound()}
+              disabled={status !== "playing"}
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--muted-strong)] transition hover:border-[var(--accent)] hover:text-[var(--accent-bright)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {muted ? "Sound" : "Mute"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void stop()}
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--muted-strong)] transition hover:border-[var(--accent)] hover:text-[var(--accent-bright)]"
+            >
+              Stop
+            </button>
+            <button
+              type="button"
+              onClick={() => void toggleFullscreen()}
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--muted-strong)] transition hover:border-[var(--accent)] hover:text-[var(--accent-bright)]"
+            >
+              {isFullscreen ? "Exit FS" : "Full screen"}
+            </button>
+          </div>
+
+          <p
+            className={
+              status === "error"
+                ? "text-sm font-medium text-[var(--danger)]"
+                : status === "playing"
+                  ? "text-sm font-medium text-[var(--success)]"
+                  : "text-sm text-[var(--muted-strong)]"
+            }
+            role="status"
+          >
+            {message}
+          </p>
+
+          <div className="mt-auto space-y-3 rounded-lg border border-[var(--line-soft)] bg-[var(--surface)] p-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--accent-bright)]">
+              Stream info
+            </h2>
+            {stats ? (
+              <dl className="grid grid-cols-2 gap-3 font-mono text-sm">
+                <div className="rounded-md bg-black/25 px-2.5 py-2">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+                    Status
+                  </dt>
+                  <dd className="mt-0.5 font-semibold text-[var(--success)]">
+                    {status}
+                  </dd>
+                </div>
+                <div className="rounded-md bg-black/25 px-2.5 py-2">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+                    FPS
+                  </dt>
+                  <dd className="mt-0.5 font-semibold text-[var(--foreground)]">
+                    {stats.fps.toFixed(1)}
+                  </dd>
+                </div>
+                <div className="rounded-md bg-black/25 px-2.5 py-2">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+                    Size
+                  </dt>
+                  <dd className="mt-0.5 font-semibold text-[var(--foreground)]">
+                    {stats.width}×{stats.height}
+                  </dd>
+                </div>
+                <div className="rounded-md bg-black/25 px-2.5 py-2">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+                    Bitrate
+                  </dt>
+                  <dd className="mt-0.5 font-semibold text-[var(--foreground)]">
+                    {(stats.bitrate / 1000).toFixed(0)} kbps
+                  </dd>
+                </div>
+                <div className="rounded-md bg-black/25 px-2.5 py-2">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+                    Frames
+                  </dt>
+                  <dd className="mt-0.5 font-semibold text-[var(--foreground)]">
+                    {stats.frames}
+                  </dd>
+                </div>
+                <div className="rounded-md bg-black/25 px-2.5 py-2">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+                    Dropped
+                  </dt>
+                  <dd className="mt-0.5 font-semibold text-[var(--foreground)]">
+                    {stats.dropped}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="text-sm text-[var(--muted-strong)]">
+                FPS, resolution, and bitrate appear while playing.
+              </p>
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
