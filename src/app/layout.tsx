@@ -16,7 +16,7 @@ const jetbrains = JetBrains_Mono({
 /** Public site URL for canonical / OG / sitemap. Override in production. */
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-  "https://hevc-player-demo.example.com";
+  "https://thertsp.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
