@@ -210,8 +210,35 @@ Full API docs: [npmjs.com/package/hevc-player](https://www.npmjs.com/package/hev
 
 ## License & contributing
 
-This demo repo is open source on GitHub: [karthii20/rtsp-live-stream](https://github.com/karthii20/rtsp-live-stream).
+This project is released under the **[MIT License](./LICENSE)**.
+
+### Why a license matters
+
+“Open source on GitHub” and “legal permission to use the code” are not the same thing.
+
+Without a license file:
+
+- Others can **look** at your code, but they often **cannot safely** copy, modify, or ship it in their own product.
+- Companies and careful developers usually **skip** unlicensed repos — no stars, no forks, no PRs.
+- You also leave unclear who owns what if someone builds on your demo.
+
+With an **MIT** license (this repo):
+
+| Permission | Meaning |
+|---|---|
+| **Use** | Run the demo locally or on a server |
+| **Copy / fork** | Clone and keep their own version |
+| **Modify** | Change UI, Docker, docs, wiring |
+| **Distribute / sell** | Include ideas or code in commercial apps |
+| **Condition** | Keep the copyright + MIT notice when redistributing substantial parts |
+| **No warranty** | The software is “as is” — you are not liable if something breaks |
+
+That clarity is what makes the license **useful**: it unlocks adoption (stars, forks, contributions) because people know the rules up front.
+
+**Note:** This license covers **this demo repository** (Next.js UI, scripts, docs). The separate [`hevc-player`](https://www.npmjs.com/package/hevc-player) npm package has its **own** license on npm — check that package when you depend on it directly.
+
+### Contributing
 
 Issues and pull requests are welcome — especially docs, Docker/deploy tips, and UI accessibility fixes.
 
-The underlying player/gateway is the separate **hevc-player** package on npm; this project shows how to run it end-to-end with Next.js.
+Source: [github.com/karthii20/rtsp-live-stream](https://github.com/karthii20/rtsp-live-stream) · Live demo: [thertsp.in](https://thertsp.in/)
