@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Outfit } from "next/font/google";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { JsonLd } from "@/components/JsonLd";
 import "./globals.css";
 
@@ -84,6 +85,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${outfit.variable} ${jetbrains.variable} antialiased`}>
+        <GoogleAnalytics />
         <JsonLd siteUrl={siteUrl} />
         {children}
       </body>
