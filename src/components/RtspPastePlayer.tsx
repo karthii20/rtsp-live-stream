@@ -9,18 +9,20 @@ import {
   type HevcPlayer,
   type HevcPlayerStats,
 } from "hevc-player";
+import {
+  detectMpegTsCodecs,
+  formatCodecLabel,
+  type DetectedCodecs,
+} from "@/lib/detectMpegTsCodecs";
 
 type Status = "idle" | "loading" | "connecting" | "playing" | "error";
 
-const EXAMPLES = [
-  "rtsp://admin:password@192.168.1.50:554/Streaming/Channels/101",
-  "rtsp://user:pass@camera.example.com:554/stream1",
-];
 
 const NPM_URL = "https://www.npmjs.com/package/hevc-player";
+const GITHUB_URL = "https://github.com/karthii20/rtsp-live-stream";
 
 /**
- * Live demo of hevc-player 0.4.0.
+ * Live demo of hevc-player 0.5.0 (bundled WASM — no public asset copy).
  * Video + stream controls sit side-by-side; fullscreen expands the stage.
  */
 export function RtspPastePlayer() {
@@ -28,17 +30,18 @@ export function RtspPastePlayer() {
   const stageShellRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HevcPlayer | null>(null);
 
-  const [urlInput, setUrlInput] = useState(EXAMPLES[0]);
+  const [urlInput, setUrlInput] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("Paste an RTSP URL and click Play.");
   const [stats, setStats] = useState<HevcPlayerStats | null>(null);
+  const [codecs, setCodecs] = useState<DetectedCodecs | null>(null);
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const onPlaying = useEffectEvent(() => {
     setStatus("playing");
-    setMessage("Playing video + audio via hevc-player WASM (H.264 / H.265 + AAC)");
+    setMessage("Playing via hevc-player WASM");
   });
 
   const onPlayerError = useEffectEvent(() => {
@@ -63,7 +66,7 @@ export function RtspPastePlayer() {
           setMessage(
             error instanceof Error
               ? error.message
-              : "Failed to load player assets. Run: pnpm run setup",
+              : "Failed to load hevc-player. Check the package install / rebuild.",
           );
         }
       });
@@ -113,6 +116,7 @@ export function RtspPastePlayer() {
     if (player) await player.destroy().catch(() => undefined);
     stageRef.current?.replaceChildren();
     setStats(null);
+    setCodecs(null);
     setMuted(true);
     setStatus("idle");
     setMessage("Stopped.");
@@ -200,7 +204,18 @@ export function RtspPastePlayer() {
         skipProbe: false,
       });
 
-      setMessage(`Remuxing ${sourceUrl} (video + audio) …`);
+      setMessage("Remuxing camera stream (video + audio)…");
+
+      // Separate session so we can sample MPEG-TS for codec labels (tickets are one-shot).
+      void createRemuxSession(sourceUrl, {
+        gatewayUrl: "",
+        skipProbe: true,
+      })
+        .then((probeUrl) => detectMpegTsCodecs(probeUrl))
+        .then((detected) => {
+          if (detected.video || detected.audio) setCodecs(detected);
+        })
+        .catch(() => undefined);
 
       const player = await createStreamPlayer(stageRef.current, {
         url: streamUrl,
@@ -258,7 +273,7 @@ export function RtspPastePlayer() {
               hevc-player
             </span>
             <span className="rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted-strong)]">
-              v0.4.0
+              v0.5.0
             </span>
           </div>
           <h1 className="max-w-xl text-base font-medium text-[var(--muted-strong)] sm:text-lg">
@@ -266,27 +281,48 @@ export function RtspPastePlayer() {
           </h1>
         </div>
 
-        <a
-          href={NPM_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="View hevc-player on npm"
-          className="inline-flex shrink-0 items-center gap-2 rounded-md bg-[#CB3837] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(203,56,55,0.7)] transition hover:bg-[#a82e2e]"
-        >
-          <svg
-            width="28"
-            height="12"
-            viewBox="0 0 18 7"
-            aria-hidden
-            className="shrink-0"
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View this demo on GitHub"
+            className="inline-flex items-center gap-2 rounded-md bg-[#24292f] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(36,41,47,0.65)] transition hover:bg-[#1b1f23]"
           >
-            <path
-              fill="#fff"
-              d="M0 0h18v6H9v1H5V6H0V0zm1 5h3V1H1v4zm4 0h3V2H7v3H5V1zm4 0h5V1H9v4zm1-1h3V2h-3v2z"
-            />
-          </svg>
-          <span>npm</span>
-        </a>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 16 16"
+              aria-hidden
+              className="shrink-0"
+              fill="currentColor"
+            >
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+            </svg>
+            <span>GitHub</span>
+          </a>
+          <a
+            href={NPM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View hevc-player on npm"
+            className="inline-flex items-center gap-2 rounded-md bg-[#CB3837] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(203,56,55,0.7)] transition hover:bg-[#a82e2e]"
+          >
+            <svg
+              width="28"
+              height="12"
+              viewBox="0 0 18 7"
+              aria-hidden
+              className="shrink-0"
+            >
+              <path
+                fill="#fff"
+                d="M0 0h18v6H9v1H5V6H0V0zm1 5h3V1H1v4zm4 0h3V2H7v3H5V1zm4 0h5V1H9v4zm1-1h3V2h-3v2z"
+              />
+            </svg>
+            <span>npm</span>
+          </a>
+        </div>
       </header>
 
       {/* Video + stream info side by side */}
@@ -318,7 +354,7 @@ export function RtspPastePlayer() {
           ) : null}
         </div>
 
-        <aside className="flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.8)] backdrop-blur-md">
+        <aside className="flex min-w-0 flex-col gap-3 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.8)] backdrop-blur-md">
           <label
             htmlFor="rtsp-url"
             className="text-sm font-semibold text-[var(--foreground)]"
@@ -330,21 +366,10 @@ export function RtspPastePlayer() {
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             placeholder="rtsp://user:pass@host:554/path"
+            autoComplete="off"
             spellCheck={false}
             className="w-full rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-3 py-2.5 font-mono text-xs text-[var(--foreground)] outline-none ring-[var(--accent)]/40 placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2"
           />
-          <div className="flex flex-wrap gap-2">
-            {EXAMPLES.map((example) => (
-              <button
-                key={example}
-                type="button"
-                onClick={() => setUrlInput(example)}
-                className="rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-2.5 py-1.5 font-mono text-[10px] text-[var(--muted-strong)] transition hover:border-[var(--accent)] hover:text-[var(--accent-bright)]"
-              >
-                {example.length > 36 ? `${example.slice(0, 34)}…` : example}
-              </button>
-            ))}
-          </div>
 
           <div className="flex flex-wrap gap-2">
             <button
@@ -384,10 +409,10 @@ export function RtspPastePlayer() {
           <p
             className={
               status === "error"
-                ? "text-sm font-medium text-[var(--danger)]"
+                ? "break-all text-sm font-medium text-[var(--danger)]"
                 : status === "playing"
-                  ? "text-sm font-medium text-[var(--success)]"
-                  : "text-sm text-[var(--muted-strong)]"
+                  ? "break-all text-sm font-medium text-[var(--success)]"
+                  : "break-all text-sm text-[var(--muted-strong)]"
             }
             role="status"
           >
@@ -406,6 +431,32 @@ export function RtspPastePlayer() {
                   </dt>
                   <dd className="mt-0.5 font-semibold text-[var(--success)]">
                     {status}
+                  </dd>
+                </div>
+                <div className="col-span-2 rounded-md bg-black/25 px-2.5 py-2 sm:col-span-1">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+                    Codec
+                  </dt>
+                  <dd className="mt-0.5 break-words font-semibold text-[var(--accent-bright)]">
+                    {codecs
+                      ? formatCodecLabel(codecs)
+                      : "Detecting…"}
+                  </dd>
+                </div>
+                <div className="rounded-md bg-black/25 px-2.5 py-2">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+                    Video
+                  </dt>
+                  <dd className="mt-0.5 font-semibold text-[var(--foreground)]">
+                    {codecs?.video ?? "—"}
+                  </dd>
+                </div>
+                <div className="rounded-md bg-black/25 px-2.5 py-2">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+                    Audio
+                  </dt>
+                  <dd className="mt-0.5 font-semibold text-[var(--foreground)]">
+                    {codecs?.audio ?? "—"}
                   </dd>
                 </div>
                 <div className="rounded-md bg-black/25 px-2.5 py-2">
@@ -451,7 +502,7 @@ export function RtspPastePlayer() {
               </dl>
             ) : (
               <p className="text-sm text-[var(--muted-strong)]">
-                FPS, resolution, and bitrate appear while playing.
+                Codec, FPS, resolution, and bitrate appear while playing.
               </p>
             )}
           </div>

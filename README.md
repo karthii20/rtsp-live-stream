@@ -8,10 +8,12 @@
 |---|---|
 | **Live demo** | [https://thertsp.in](https://thertsp.in/) |
 | **Source** | [github.com/karthii20/rtsp-live-stream](https://github.com/karthii20/rtsp-live-stream) |
-| **npm package** | [hevc-player](https://www.npmjs.com/package/hevc-player) (`0.4.0`) |
+| **npm package** | [hevc-player](https://www.npmjs.com/package/hevc-player) (`0.5.0`) |
 | **Docker image** | `ghcr.io/karthii20/rtsp-live-stream:latest` |
 
-This repository is **public and open source**. It is a working Next.js demo of the [`hevc-player`](https://www.npmjs.com/package/hevc-player) npm package: paste a camera `rtsp://` URL, remux on the server, and decode in the browser with WebAssembly.
+This repository is **public and open source**. It is a working Next.js demo of the [`hevc-player`](https://www.npmjs.com/package/hevc-player) npm package (**0.5.0**): paste a camera `rtsp://` URL, remux on the server, and decode in the browser with WebAssembly.
+
+From **0.5.0**, player + WASM assets ship **inside the npm package** (Blob URLs). You do **not** need `public/vendor` or `public/wasm`, and there is no `pnpm run setup` / `hevc-player-copy-assets` step for the default path.
 
 ---
 
@@ -54,7 +56,7 @@ Detailed flow diagrams: [docs/RTSP-PLAYBACK-FLOW.md](./docs/RTSP-PLAYBACK-FLOW.m
 
 1. Node.js **20.12+**
 2. **FFmpeg on PATH** (`ffmpeg -version`)
-3. `pnpm install` + `pnpm run setup`
+3. `pnpm install`
 4. **Both** Next.js **and** the gateway must be running
 
 ## Run locally
@@ -62,7 +64,6 @@ Detailed flow diagrams: [docs/RTSP-PLAYBACK-FLOW.md](./docs/RTSP-PLAYBACK-FLOW.m
 ```bash
 cp .env.example .env   # edit if needed
 pnpm install
-pnpm run setup
 pnpm run dev           # gateway :3002 + Next :3000 together
 ```
 
@@ -102,7 +103,7 @@ HEVC_GATEWAY_URL=http://gateway-host:3002
 
 ```bash
 ffmpeg -version
-pnpm install && pnpm run setup
+pnpm install
 curl -s http://127.0.0.1:3002/health   # after pnpm run start / dev
 # expect: {"ok":true,"service":"streaming",...}
 ```
@@ -179,9 +180,9 @@ The COOP console warning on plain HTTP + public IP is expected (browsers only fu
 This demo is the reference UI. For your product, install the library:
 
 ```bash
-npm install hevc-player@0.4.0
-npx hevc-player-copy-assets public
+npm install hevc-player@0.5.0
 npx hevc-player gateway --port 3002
+# Player + WASM assets are bundled in the package — no public/vendor or public/wasm copy.
 ```
 
 ```js

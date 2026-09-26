@@ -24,7 +24,7 @@ Browsers cannot open `rtsp://` URLs. Playback works by remuxing RTSP on a Node g
          ▼
 ┌─────────────────┐
 │ Next.js app     │  UI + rewrite /v1 → gateway
-│ :3000           │  Serves /vendor + /wasm assets
+│ :3000           │  Serves Next UI; hevc-player bundles WASM in the package
 └────────┬────────┘
          │ same-origin /v1/stream?ticket=…
          ▼
@@ -95,7 +95,7 @@ flowchart TB
     end
 
     subgraph Nextjs["Next.js :3000"]
-        I[UI + static /vendor /wasm]
+        I[UI + hevc-player bundled WASM]
         J["Rewrite /v1 → gateway"]
     end
 
@@ -179,7 +179,7 @@ On `GET /v1/stream?ticket=…`:
 
 `createStreamPlayer` / `createHevcPlayer`:
 
-1. Loads `/vendor/avplayer.js` and `/wasm/hevc-simd.wasm` (or `h264-simd.wasm`)
+1. Loads the player + WASM from the hevc-player package (bundled Blob URLs; no public/ copy)
 2. Fetches the MPEG-TS HTTP stream
 3. Demuxes and decodes in a worker
 4. Draws frames (WebGL / canvas)

@@ -1,8 +1,8 @@
 const NPM_URL = "https://www.npmjs.com/package/hevc-player";
 
-const INSTALL = `npm install hevc-player@0.4.0
-npx hevc-player-copy-assets public
-npx hevc-player gateway --port 3002`;
+const INSTALL = `npm install hevc-player@0.5.0
+npx hevc-player gateway --port 3002
+# WASM + player assets are bundled in the package (no public/ copy)`
 
 const USAGE = `import {
   createStreamPlayer,
@@ -32,7 +32,7 @@ soundButton.onclick = async () => {
 };`;
 
 /**
- * Below-the-fold guide: how to use hevc-player 0.4.0 (video + audio) in your app.
+ * Below-the-fold guide: how to use hevc-player 0.5.0 (bundled WASM assets).
  */
 export function PackageGuide() {
   return (
@@ -51,8 +51,11 @@ export function PackageGuide() {
           >
             hevc-player
           </a>{" "}
-          0.4.0. Install it, start the bundled gateway, paste an RTSP URL, and
-          play video with synchronized AAC audio.
+          0.5.0. Install it, start the bundled gateway, paste an RTSP URL, and
+          play video with synchronized AAC audio — no{" "}
+          <code className="text-[var(--muted-strong)]">public/wasm</code> or{" "}
+          <code className="text-[var(--muted-strong)]">public/vendor</code> copy
+          step.
         </p>
       </div>
 
@@ -68,7 +71,7 @@ export function PackageGuide() {
         <ul className="grid gap-3 text-sm text-[var(--muted-strong)] sm:grid-cols-3">
           <li className="rounded-xl border border-[var(--line-soft)] bg-[var(--panel)] p-4">
             <p className="mb-1 font-semibold text-[var(--foreground)]">WASM player</p>
-            Software H.264 / H.265 + AAC decode — works without GPU HEVC.
+            Software H.264 / H.265 + AAC decode — bundled in the package (no public/ copy).
           </li>
           <li className="rounded-xl border border-[var(--line-soft)] bg-[var(--panel)] p-4">
             <p className="mb-1 font-semibold text-[var(--foreground)]">RTSP gateway</p>
