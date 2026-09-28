@@ -110,8 +110,8 @@ importers:
   .:
     dependencies:
       hevc-player:
-        specifier: 0.5.0
-        version: 0.5.0(react@19.2.8)
+        specifier: 0.5.1
+        version: 0.5.1(react@19.2.8)
       next:
         specifier: 16.3.5
         version: 16.3.5(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1375,8 +1375,8 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  hevc-player@0.5.0:
-    resolution: {integrity: sha512-nZtJqNztvBobeGiBk93I5x20vtz/korI5p9YNpFUeRHQgHebCIbx1PHmU2SgK32BjlHt0PdT7U96NUViSrHC4g==}
+  hevc-player@0.5.1:
+    resolution: {integrity: sha512-7UdxvUDxoaorJ4DAZ+1IHABVz1gOme528aJA/eJqw+3yuBzTImXCoCFinwLm2q5EQymL+bJS13iCqUt5+60qdw==}
     engines: {node: '>=18'}
     hasBin: true
     peerDependencies:
@@ -3456,7 +3456,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  hevc-player@0.5.0(react@19.2.8):
+  hevc-player@0.5.1(react@19.2.8):
     optionalDependencies:
       react: 19.2.8
 

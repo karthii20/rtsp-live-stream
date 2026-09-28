@@ -1,38 +1,35 @@
 const NPM_URL = "https://www.npmjs.com/package/hevc-player";
 
-const INSTALL = `npm install hevc-player@0.5.0
+const INSTALL = `npm install hevc-player@0.5.1
 npx hevc-player gateway --port 3002
 # WASM + player assets are bundled in the package (no public/ copy)`
 
 const USAGE = `import {
-  createStreamPlayer,
+  startLiveStreamPlayer,
   createRemuxSession,
   preloadHevcPlayer,
 } from "hevc-player";
 
 await preloadHevcPlayer();
 
-// 1) Register RTSP with the package gateway (video copy + audio → AAC)
-const streamUrl = await createRemuxSession("rtsp://camera/stream", {
-  gatewayUrl: "", // same-origin /v1 proxy
-});
-
-// 2) Play MPEG-TS in the browser (WASM H.264/H.265 + AAC)
-const player = await createStreamPlayer(container, {
-  url: streamUrl,
-  live: true,
+// Register a fresh stream ticket on each connection or retry.
+const player = startLiveStreamPlayer(container, {
+  resolveUrl: (signal) => createRemuxSession("rtsp://camera/stream", {
+    gatewayUrl: "", // same-origin /v1 proxy
+    signal,
+  }),
   mode: "software",
   audio: true,  // default — decode audio when present
   muted: true,  // start muted; unmute from a click
 });
 
-// 3) Unlock sound from a user gesture (browser autoplay policy)
+// Unlock sound from a user gesture (browser autoplay policy)
 soundButton.onclick = async () => {
   await player.setMuted(!player.isMuted());
 };`;
 
 /**
- * Below-the-fold guide: how to use hevc-player 0.5.0 (bundled WASM assets).
+ * Below-the-fold guide: how to use hevc-player 0.5.1 (bundled WASM assets).
  */
 export function PackageGuide() {
   return (
@@ -51,8 +48,8 @@ export function PackageGuide() {
           >
             hevc-player
           </a>{" "}
-          0.5.0. Install it, start the bundled gateway, paste an RTSP URL, and
-          play video with synchronized AAC audio — no{" "}
+          0.5.1. Install it, start the bundled gateway, paste an RTSP URL, and
+          play video with synchronized AAC audio and automatic reconnection — no{" "}
           <code className="text-[var(--muted-strong)]">public/wasm</code> or{" "}
           <code className="text-[var(--muted-strong)]">public/vendor</code> copy
           step.

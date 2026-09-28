@@ -8,10 +8,12 @@
 |---|---|
 | **Live demo** | [https://thertsp.in](https://thertsp.in/) |
 | **Source** | [github.com/karthii20/rtsp-live-stream](https://github.com/karthii20/rtsp-live-stream) |
-| **npm package** | [hevc-player](https://www.npmjs.com/package/hevc-player) (`0.5.0`) |
+| **npm package** | [hevc-player](https://www.npmjs.com/package/hevc-player) (`0.5.1`) |
 | **Docker image** | `ghcr.io/karthii20/rtsp-live-stream:latest` |
 
-This repository is **public and open source**. It is a working Next.js demo of the [`hevc-player`](https://www.npmjs.com/package/hevc-player) npm package (**0.5.0**): paste a camera `rtsp://` URL, remux on the server, and decode in the browser with WebAssembly.
+This repository is **public and open source**. It is a working Next.js demo of the [`hevc-player`](https://www.npmjs.com/package/hevc-player) npm package (**0.5.1**): paste a camera `rtsp://` URL, remux on the server, and decode in the browser with WebAssembly.
+
+**0.5.1** adds automatic reconnection with fresh stream tickets, a 0.5–2 second live jitter buffer, and automatic renderer resizing. Stop cancels pending connections and retries.
 
 From **0.5.0**, player + WASM assets ship **inside the npm package** (Blob URLs). You do **not** need `public/vendor` or `public/wasm`, and there is no `pnpm run setup` / `hevc-player-copy-assets` step for the default path.
 
@@ -180,27 +182,25 @@ The COOP console warning on plain HTTP + public IP is expected (browsers only fu
 This demo is the reference UI. For your product, install the library:
 
 ```bash
-npm install hevc-player@0.5.0
+npm install hevc-player@0.5.1
 npx hevc-player gateway --port 3002
 # Player + WASM assets are bundled in the package — no public/vendor or public/wasm copy.
 ```
 
 ```js
 import {
-  createStreamPlayer,
+  startLiveStreamPlayer,
   createRemuxSession,
   preloadHevcPlayer,
 } from "hevc-player";
 
 await preloadHevcPlayer();
 
-const streamUrl = await createRemuxSession("rtsp://camera/stream", {
-  gatewayUrl: "", // same-origin /v1 proxy
-});
-
-const player = await createStreamPlayer(container, {
-  url: streamUrl,
-  live: true,
+const player = startLiveStreamPlayer(container, {
+  resolveUrl: (signal) => createRemuxSession("rtsp://camera/stream", {
+    gatewayUrl: "", // same-origin /v1 proxy
+    signal,
+  }),
   mode: "software",
   audio: true,
   muted: true,

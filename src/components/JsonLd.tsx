@@ -21,7 +21,7 @@ export function JsonLd({ siteUrl }: JsonLdProps) {
     description:
       "H.264 / H.265 (HEVC) WASM browser player with an FFmpeg RTSP remux gateway. Play IP camera streams in Chrome, Firefox, and Edge.",
     url: siteUrl,
-    softwareVersion: "0.5.0",
+    softwareVersion: "0.5.1",
     downloadUrl: "https://www.npmjs.com/package/hevc-player",
     codeRepository: "https://github.com/karthii20/rtsp-live-stream",
   };
@@ -54,7 +54,7 @@ export function JsonLd({ siteUrl }: JsonLdProps) {
         name: "How do I play an RTSP stream in the browser?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Install hevc-player, run the bundled gateway with FFmpeg, register your camera with createRemuxSession, then play with createStreamPlayer. Or use this live demo: paste your RTSP URL and click Play.",
+          text: "Install hevc-player, run the bundled gateway with FFmpeg, use startLiveStreamPlayer with createRemuxSession in its resolveUrl callback for automatic reconnection. Or use this live demo: paste your RTSP URL and click Play.",
         },
       },
       {

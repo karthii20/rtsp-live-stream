@@ -89,7 +89,7 @@ flowchart TB
         C[Paste URL]
         D[classifyPasteUrl]
         E[POST /v1/sessions]
-        F[createStreamPlayer]
+        F[startLiveStreamPlayer]
         G[WASM H.264 / H.265 + AAC]
         H[Render frames]
     end
@@ -177,7 +177,9 @@ On `GET /v1/stream?ticket=…`:
 
 ### 6. WASM player decodes in the browser
 
-`createStreamPlayer` / `createHevcPlayer`:
+`startLiveStreamPlayer` manages the live session and calls `createHevcPlayer` for each attempt. Its `resolveUrl` callback registers a fresh ticket with `createRemuxSession` on every reconnect. Stop cancels pending registration, playback, and retries.
+
+For each attempt:
 
 1. Loads the player + WASM from the hevc-player package (bundled Blob URLs; no public/ copy)
 2. Fetches the MPEG-TS HTTP stream

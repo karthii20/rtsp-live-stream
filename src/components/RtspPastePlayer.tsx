@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, useEffectEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   classifyPasteUrl,
   createRemuxSession,
-  createStreamPlayer,
+  startLiveStreamPlayer,
   preloadHevcPlayer,
   type HevcPlayer,
   type HevcPlayerStats,
@@ -15,14 +15,14 @@ import {
   type DetectedCodecs,
 } from "@/lib/detectMpegTsCodecs";
 
-type Status = "idle" | "loading" | "connecting" | "playing" | "error";
+type Status = "idle" | "loading" | "connecting" | "reconnecting" | "playing" | "error";
 
 
 const NPM_URL = "https://www.npmjs.com/package/hevc-player";
 const GITHUB_URL = "https://github.com/karthii20/rtsp-live-stream";
 
 /**
- * Live demo of hevc-player 0.5.0 (bundled WASM — no public asset copy).
+ * Live demo of hevc-player 0.5.1 (bundled WASM — no public asset copy).
  * Video + stream controls sit side-by-side; fullscreen expands the stage.
  */
 export function RtspPastePlayer() {
@@ -38,18 +38,6 @@ export function RtspPastePlayer() {
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const onPlaying = useEffectEvent(() => {
-    setStatus("playing");
-    setMessage("Playing via hevc-player WASM");
-  });
-
-  const onPlayerError = useEffectEvent(() => {
-    setStatus("error");
-    setMessage(
-      "Playback failed. Check the RTSP URL and that the hevc-player gateway can reach the camera.",
-    );
-  });
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +60,8 @@ export function RtspPastePlayer() {
       });
     return () => {
       cancelled = true;
+      void playerRef.current?.destroy();
+      playerRef.current = null;
     };
   }, []);
 
@@ -199,53 +189,57 @@ export function RtspPastePlayer() {
       const kind = classifyPasteUrl(raw);
       const sourceUrl = kind.mode === "remux" ? kind.sourceUrl : raw;
 
-      const streamUrl = await createRemuxSession(sourceUrl, {
-        gatewayUrl: "",
-        skipProbe: false,
-      });
-
-      setMessage("Remuxing camera stream (video + audio)…");
-
-      // Separate session so we can sample MPEG-TS for codec labels (tickets are one-shot).
-      void createRemuxSession(sourceUrl, {
-        gatewayUrl: "",
-        skipProbe: true,
-      })
-        .then((probeUrl) => detectMpegTsCodecs(probeUrl))
-        .then((detected) => {
-          if (detected.video || detected.audio) setCodecs(detected);
-        })
-        .catch(() => undefined);
-
-      const player = await createStreamPlayer(stageRef.current, {
-        url: streamUrl,
-        live: true,
+      const player = startLiveStreamPlayer(stageRef.current, {
+        resolveUrl: async (signal) => {
+          const streamUrl = await createRemuxSession(sourceUrl, {
+            gatewayUrl: "",
+            skipProbe: false,
+            signal,
+          });
+          // Use a separate one-shot ticket for codec detection.
+          void createRemuxSession(sourceUrl, {
+            gatewayUrl: "",
+            skipProbe: true,
+            signal,
+          })
+            .then((probeUrl) => detectMpegTsCodecs(probeUrl))
+            .then((detected) => {
+              if (!signal.aborted && (detected.video || detected.audio)) {
+                setCodecs(detected);
+              }
+            })
+            .catch(() => undefined);
+          return streamUrl;
+        },
         mode: "software",
         audio: true,
         muted: true,
-        onPlaying,
-        onError: onPlayerError,
-        onEnded: () => {
-          setStatus("error");
-          setMessage("Stream ended.");
+        onPlaying: () => {
+          setStatus("playing");
+          setMessage("Playing via hevc-player WASM");
         },
-        onTimeout: () => {
-          setStatus("error");
-          setMessage("Timed out waiting for video.");
+        onStatus: (state, retryInMs) => {
+          if (state === "Playing") return;
+          setStats(null);
+          if (state === "Error") {
+            setStatus("error");
+          } else {
+            setStatus(state === "Reconnecting" ? "reconnecting" : "connecting");
+            setMessage(retryInMs
+              ? `Stream interrupted. Reconnecting in ${retryInMs / 1000}s…`
+              : `${state} to camera…`);
+          }
+        },
+        onError: (message) => {
+          if (!message) return;
+          setMessage(/forbidden/i.test(message)
+            ? `Gateway rejected this browser origin. Set PUBLIC_ORIGIN=${window.location.origin} and restart.`
+            : message);
         },
       });
       playerRef.current = player;
       setMuted(player.isMuted());
 
-      const media = stageRef.current.querySelector(
-        "canvas, video",
-      ) as HTMLElement | null;
-      if (media) {
-        media.style.width = "100%";
-        media.style.height = "100%";
-        media.style.objectFit = "contain";
-        media.style.display = "block";
-      }
     } catch (error) {
       setStatus("error");
       const rawMessage =
@@ -273,7 +267,7 @@ export function RtspPastePlayer() {
               hevc-player
             </span>
             <span className="rounded-md border border-[var(--line-soft)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted-strong)]">
-              v0.5.0
+              v0.5.1
             </span>
           </div>
           <h1 className="max-w-xl text-base font-medium text-[var(--muted-strong)] sm:text-lg">
@@ -376,7 +370,7 @@ export function RtspPastePlayer() {
               type="button"
               onClick={() => void play()}
               disabled={
-                !ready || status === "connecting" || status === "loading"
+                !ready || status === "connecting" || status === "reconnecting" || status === "loading"
               }
               className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-bold text-[var(--accent-ink)] shadow-[0_8px_20px_-8px_rgba(255,122,61,0.8)] transition hover:bg-[var(--accent-bright)] disabled:cursor-not-allowed disabled:opacity-45"
             >

@@ -7,7 +7,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "How do I play an RTSP stream in the browser?",
-    a: "Paste your camera’s RTSP URL above and click Play, or install the hevc-player npm package, run npx hevc-player gateway, call createRemuxSession with the camera URL, then createStreamPlayer with the returned MPEG-TS URL.",
+    a: "Paste your camera’s RTSP URL above and click Play, or install the hevc-player npm package, run npx hevc-player gateway, use startLiveStreamPlayer with createRemuxSession in its resolveUrl callback for automatic reconnection.",
   },
   {
     q: "Will H.265 / HEVC work in Chrome without plugins?",
