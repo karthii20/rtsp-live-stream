@@ -1,27 +1,6 @@
 const NPM_URL = "https://www.npmjs.com/package/hevc-player";
 
-const FAQS: { q: string; a: string }[] = [
-  {
-    q: "Can browsers play RTSP directly?",
-    a: "No. Chrome, Firefox, Safari, and Edge cannot open an rtsp:// URL in a normal <video> tag. You need a small server-side gateway that turns RTSP into something the browser understands (HTTP MPEG-TS, HLS, or WebRTC). This demo uses the hevc-player gateway for that step.",
-  },
-  {
-    q: "How do I play an RTSP stream in the browser?",
-    a: "Paste your camera’s RTSP URL above and click Play, or install the hevc-player npm package, run npx hevc-player gateway, use startLiveStreamPlayer with createRemuxSession in its resolveUrl callback for automatic reconnection.",
-  },
-  {
-    q: "Will H.265 / HEVC work in Chrome without plugins?",
-    a: "Yes on this stack. hevc-player ships WASM (WebAssembly) decoders for H.265 and H.264, so you are not limited to browsers with native HEVC. Audio is normalized to AAC for playback.",
-  },
-  {
-    q: "What is the difference between an RTSP player and a browser player?",
-    a: "A desktop RTSP player (VLC, Onvif tools) speaks RTSP natively. A browser player needs HTTP or WebRTC. hevc-player bridges both: the gateway speaks RTSP to the camera; the page speaks MPEG-TS over HTTP to WASM.",
-  },
-  {
-    q: "Why does my IP camera work on localhost but not on a hosted site?",
-    a: "Private addresses like 192.168.1.x are only reachable on your LAN. The hosted gateway runs in the cloud and cannot open that RTSP path unless you VPN, tunnel, or run the gateway on a machine that shares the camera’s network.",
-  },
-];
+import { FAQS } from "@/lib/rtspFaq";
 
 /**
  * SEO / education section targeting high-intent searches.
@@ -34,31 +13,37 @@ export function SeoContent() {
           How to play RTSP in a browser (H.264 &amp; H.265)
         </h2>
         <p className="max-w-3xl text-base leading-relaxed text-[var(--muted-strong)]">
-          Searching for an{" "}
-          <strong className="font-semibold text-[var(--foreground)]">
-            RTSP player in the browser
-          </strong>
-          , an{" "}
-          <strong className="font-semibold text-[var(--foreground)]">
-            H.265 / HEVC web player
-          </strong>
-          , or a way to{" "}
-          <strong className="font-semibold text-[var(--foreground)]">
-            stream an IP camera in Chrome
-          </strong>
-          ? Browsers block raw RTSP. This live demo shows a practical path:
-          remux the camera with the{" "}
-          <a
-            href={NPM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-[var(--accent-bright)] underline-offset-2 hover:underline"
-          >
-            hevc-player
-          </a>{" "}
-          gateway, then decode H.264 / H.265 and AAC in-page with WebAssembly.
+          Play an IP camera or NVR stream in a web page using the open-source
+          hevc-player demo. Its FFmpeg gateway converts RTSP to HTTP MPEG-TS,
+          and WebAssembly decodes H.264 / H.265 video with AAC audio. You can
+          try a stream reachable from this server, or run the same app on your
+          camera’s network using Docker.
+
         </p>
       </header>
+
+      <section id="how-to-play-rtsp" className="space-y-4">
+        <h3 className="text-xl font-semibold">Play an RTSP camera stream in Chrome or Firefox</h3>
+        <ol className="list-decimal space-y-3 pl-5 text-[var(--muted-strong)]">
+          <li>Find the RTSP URL in your camera or NVR settings. Confirm the address and credentials using VLC on the camera’s network.</li>
+          <li>Choose where to run the gateway. For a private IP camera, run this app locally or give your server a VPN route to the camera network.</li>
+          <li>Paste the RTSP URL into the player above and select Play. The server remuxes the stream; your browser decodes the video.</li>
+          <li>Select Sound to enable audio. If playback fails, check gateway connectivity, camera credentials, and FFmpeg availability.</li>
+        </ol>
+        <p className="text-[var(--muted-strong)]">The hosted demo cannot reach a camera at 192.168.x.x just because your browser is on the same Wi-Fi. Camera URLs and credentials are sent to the gateway. For private cameras, use your own deployment.</p>
+      </section>
+
+      <section id="rtsp-react-player" className="space-y-3">
+        <h3 className="text-xl font-semibold">Add an RTSP player to React, Next.js, or a JavaScript website</h3>
+        <p className="text-[var(--muted-strong)]">Use the install and code example above to start the Node.js gateway and connect your UI. The live-player API registers fresh stream tickets when reconnecting. WASM decoder assets are bundled with the npm package. Serve the UI over HTTPS or localhost with the supplied cross-origin isolation headers.</p>
+        <p className="text-[var(--muted-strong)]">An HTML5 video tag alone cannot open an RTSP URL. This implementation uses a canvas renderer and an HTTP MPEG-TS stream. Keep the gateway on a host that can reach your cameras; static hosting alone does not run FFmpeg.</p>
+      </section>
+
+      <section id="rtsp-streaming-options" className="space-y-3">
+        <h3 className="text-xl font-semibold">RTSP to HLS, WebRTC, or MPEG-TS: which path does this demo use?</h3>
+        <p className="text-[var(--muted-strong)]">These are different ways to deliver camera video to a web page. HLS uses HTTP playlists and media segments. WebRTC uses a real-time connection and negotiated browser codecs. This demo sends MPEG-TS over HTTP and decodes H.264 or H.265 using WebAssembly, avoiding dependence on native HEVC decoding.</p>
+        <p className="text-[var(--muted-strong)]">The gateway copies video rather than re-encoding it, and converts camera audio to AAC. Playback delay depends on the camera, network, buffering, and device performance. Try a lower-resolution camera substream if software decoding struggles.</p>
+      </section>
 
       <section className="space-y-3" aria-labelledby="why-rtsp-browser">
         <h3
@@ -150,9 +135,11 @@ export function SeoContent() {
       </section>
 
       <p className="text-sm text-[var(--muted)]">
-        Related searches this page targets: play RTSP in browser, RTSP player
-        browser, H.265 browser player, HEVC web player, stream IP camera in
-        browser, RTSP H.264 H.265 WASM player.
+        Build your own RTSP web viewer with the{" "}
+        <a className="text-[var(--accent-bright)] underline" href="https://github.com/karthii20/rtsp-live-stream">
+          open-source RTSP browser player on GitHub
+        </a>{" "}
+        or install <a className="text-[var(--accent-bright)] underline" href={NPM_URL}>hevc-player for JavaScript and React</a>.
       </p>
     </article>
   );

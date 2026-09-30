@@ -14,19 +14,16 @@ const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
 });
 
-/** Public site URL for canonical / OG / sitemap. Override in production. */
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-  "https://thertsp.in";
+import { siteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Play RTSP in Browser | H.264 & H.265 (HEVC) Web Player Demo",
+    default: "RTSP Browser Player — H.264 & H.265 | TheRTSP",
     template: "%s | hevc-player",
   },
   description:
-    "Play RTSP camera streams in any modern browser. Live demo of hevc-player — H.264 / H.265 (HEVC) WASM decode with AAC audio. Paste an rtsp:// URL and stream IP cameras without plugins.",
+    "Play RTSP in your browser with H.264/H.265 video and audio. Try the demo or self-host the open-source IP camera viewer with Docker, React, and hevc-player.",
   keywords: [
     "play RTSP in browser",
     "RTSP player browser",
@@ -51,13 +48,15 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "/",
-    siteName: "hevc-player — RTSP in the browser",
+    siteName: "TheRTSP",
+    images: [{ url: "/images/rtsp-browser-player.jpg", alt: "TheRTSP browser player demo" }],
     title: "Play RTSP in Browser | H.264 & H.265 Web Player",
     description:
       "Paste an RTSP URL and play H.264 / H.265 IP camera video with audio in Chrome, Firefox, and Edge. Free live demo of the hevc-player npm package.",
   },
   twitter: {
     card: "summary_large_image",
+    images: ["/images/rtsp-browser-player.jpg"],
     title: "Play RTSP in Browser | H.264 & H.265 Web Player",
     description:
       "Live demo: stream RTSP cameras in the browser with WASM H.264 / H.265 + AAC. Built with hevc-player.",

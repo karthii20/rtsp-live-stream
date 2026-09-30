@@ -15,6 +15,8 @@ import {
   type DetectedCodecs,
 } from "@/lib/detectMpegTsCodecs";
 
+import { retainVideoFrame } from "@/lib/retainVideoFrame";
+
 type Status = "idle" | "loading" | "connecting" | "reconnecting" | "playing" | "error";
 
 
@@ -26,6 +28,9 @@ const GITHUB_URL = "https://github.com/karthii20/rtsp-live-stream";
  * Video + stream controls sit side-by-side; fullscreen expands the stage.
  */
 export function RtspPastePlayer() {
+  const displayRef = useRef<HTMLCanvasElement>(null);
+  const retainedRef = useRef<ReturnType<typeof retainVideoFrame> | null>(null);
+  const [hasFrame, setHasFrame] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const stageShellRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HevcPlayer | null>(null);
@@ -60,6 +65,7 @@ export function RtspPastePlayer() {
       });
     return () => {
       cancelled = true;
+      retainedRef.current?.dispose();
       void playerRef.current?.destroy();
       playerRef.current = null;
     };
@@ -101,6 +107,9 @@ export function RtspPastePlayer() {
   }, []);
 
   async function stop() {
+    retainedRef.current?.dispose();
+    retainedRef.current = null;
+    setHasFrame(false);
     const player = playerRef.current;
     playerRef.current = null;
     if (player) await player.destroy().catch(() => undefined);
@@ -189,6 +198,9 @@ export function RtspPastePlayer() {
       const kind = classifyPasteUrl(raw);
       const sourceUrl = kind.mode === "remux" ? kind.sourceUrl : raw;
 
+      if (displayRef.current) {
+        retainedRef.current = retainVideoFrame(stageRef.current, displayRef.current, () => setHasFrame(true));
+      }
       const player = startLiveStreamPlayer(stageRef.current, {
         resolveUrl: async (signal) => {
           const streamUrl = await createRemuxSession(sourceUrl, {
@@ -215,11 +227,13 @@ export function RtspPastePlayer() {
         audio: true,
         muted: true,
         onPlaying: () => {
+          retainedRef.current?.setPlaying(true);
           setStatus("playing");
           setMessage("Playing via hevc-player WASM");
         },
         onStatus: (state, retryInMs) => {
           if (state === "Playing") return;
+          retainedRef.current?.setPlaying(false);
           setStats(null);
           if (state === "Error") {
             setStatus("error");
@@ -331,6 +345,13 @@ export function RtspPastePlayer() {
             aria-label="hevc-player video stage"
           />
 
+          <canvas
+            ref={displayRef}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full bg-black object-contain"
+            style={{ visibility: "hidden" }}
+          />
+
           <div className="absolute right-2 top-2 z-10 flex gap-2">
             <button
               type="button"
@@ -341,7 +362,7 @@ export function RtspPastePlayer() {
             </button>
           </div>
 
-          {!stats && status !== "playing" ? (
+          {!hasFrame && status !== "playing" ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center text-sm font-medium text-[var(--muted-strong)]">
               Video appears here after Play
             </div>

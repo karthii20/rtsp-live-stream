@@ -1,8 +1,8 @@
-# RTSP Live Stream — hevc-player demo
+# RTSP Browser Player — H.264 / H.265 with React, Next.js & FFmpeg
 
 [![hevc-player demo on thertsp.in](./docs/images/thertsp-demo.jpg)](https://thertsp.in/)
 
-**Play RTSP camera streams in any modern browser** — H.264 / H.265 (HEVC) video with AAC audio, no plugins.
+**Play RTSP streams in a browser** with an open-source IP camera viewer: H.264 / H.265 (HEVC) video, AAC audio, a Node.js + FFmpeg gateway, and a WebAssembly player. Self-host with Docker or integrate the npm package into React and Next.js.
 
 | | |
 |---|---|
@@ -53,6 +53,17 @@ Browser  →  Next.js (/v1 rewrite)  →  hevc-player gateway  →  FFmpeg remux
 Detailed flow diagrams: [docs/RTSP-PLAYBACK-FLOW.md](./docs/RTSP-PLAYBACK-FLOW.md)
 
 ---
+
+## How to play RTSP in a browser
+
+1. Find your camera’s RTSP URL and verify it in VLC from the camera network.
+2. Run this app on a machine that can reach the camera (see the local and Docker instructions below).
+3. Open the web UI, paste the camera URL, and select **Play**. Select **Sound** for audio.
+4. For a remote server, configure a VPN route to private cameras. Being on the camera’s Wi-Fi in your browser does not give the hosted gateway access.
+
+A normal HTML5 `<video>` tag cannot play `rtsp://`. This demo uses RTSP → HTTP MPEG-TS → WASM, with video copied and audio converted to AAC. It does not provide an HLS or WebRTC output in this UI. Software H.265 decoding performance depends on the viewing device and stream settings.
+
+Camera credentials are sent to the gateway. Use a self-hosted deployment for private camera streams.
 
 ## Requirements
 
@@ -243,3 +254,17 @@ That clarity is what makes the license **useful**: it unlocks adoption (stars, f
 Issues and pull requests are welcome — especially docs, Docker/deploy tips, and UI accessibility fixes.
 
 Source: [github.com/karthii20/rtsp-live-stream](https://github.com/karthii20/rtsp-live-stream) · Live demo: [thertsp.in](https://thertsp.in/)
+
+## Search discovery after deployment
+
+The homepage explains RTSP browser playback, H.265 / HEVC web playback, React integration, and local IP camera connectivity. Canonical URLs, robots, and sitemap share `NEXT_PUBLIC_SITE_URL` (default: `https://thertsp.in`). Set this before building if deploying to another domain.
+
+After publishing:
+
+1. In Google Search Console, verify the production domain and submit `https://thertsp.in/sitemap.xml`.
+2. Inspect the homepage URL and request indexing after the deployment. Check that Google sees the canonical production URL.
+3. Track impressions, clicks, and search queries for RTSP browser playback and H.265 camera viewing. No search-volume or ranking claims are implied by these topics.
+4. In the GitHub repository About settings, use the homepage `https://thertsp.in` and description: “Open-source RTSP browser player for H.264/H.265 IP cameras. React + Next.js demo with an FFmpeg gateway, WASM decoding, and Docker deployment.”
+5. Suggested GitHub topics: `rtsp`, `rtsp-player`, `ip-camera`, `video-streaming`, `hevc`, `h265`, `h264`, `webassembly`, `ffmpeg`, `react`, `nextjs`, `docker`.
+
+The repository About settings and Search Console submission must be applied separately from this code change. Helpful content and descriptive titles support discovery; metadata alone cannot guarantee ranking. See [Google Search Essentials](https://developers.google.com/search/docs/essentials).

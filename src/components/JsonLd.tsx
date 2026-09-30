@@ -1,10 +1,11 @@
+import { FAQS } from "@/lib/rtspFaq";
+
 type JsonLdProps = {
   siteUrl: string;
 };
 
 /**
- * Structured data for Google rich results (SoftwareApplication + FAQPage).
- * Helps SEO for “play RTSP in browser” and related developer searches.
+ * Describe the software and visible FAQs; rich-result display is not guaranteed.
  */
 export function JsonLd({ siteUrl }: JsonLdProps) {
   const software = {
@@ -40,55 +41,26 @@ export function JsonLd({ siteUrl }: JsonLdProps) {
   const faq = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "Can browsers play RTSP directly?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "No. Modern browsers cannot open rtsp:// URLs in a video element. You need a gateway that remuxes RTSP to a browser-friendly format such as HTTP MPEG-TS, HLS, or WebRTC. hevc-player includes that gateway.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "How do I play an RTSP stream in the browser?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Install hevc-player, run the bundled gateway with FFmpeg, use startLiveStreamPlayer with createRemuxSession in its resolveUrl callback for automatic reconnection. Or use this live demo: paste your RTSP URL and click Play.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Does this play H.265 / HEVC in Chrome?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Yes. hevc-player uses WebAssembly software decode for H.265 / HEVC and H.264, so playback does not depend on GPU HEVC support in the browser.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Why does my LAN camera work locally but not on a hosted site?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "The remux gateway must reach the camera. A private IP like 192.168.x.x is reachable from your LAN but not from a cloud server. Host the gateway on a machine that can open the RTSP URL, or expose the camera via VPN.",
-        },
-      },
-    ],
+    mainEntity: FAQS.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a },
+    })),
   };
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(software) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(software).replace(/</g, "\\u003c") }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(webApp) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webApp).replace(/</g, "\\u003c") }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faq).replace(/</g, "\\u003c") }}
       />
     </>
   );
